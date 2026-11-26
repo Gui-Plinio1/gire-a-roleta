@@ -1,0 +1,87 @@
+﻿<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gire a Roleta</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: system-ui, -apple-system, sans-serif; }
+  body { background: #121417; color: #eceef2; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: #1a1d23; border: 1px solid #2b303a; border-radius: 18px; padding: 32px 24px; width: 100%; max-width: 390px; text-align: center; box-shadow: 0 18px 40px rgba(0,0,0,.45); }
+  .hidden { display: none !important; }
+  h1 { font-size: 1.55rem; font-weight: 600; color: #d6be8a; margin-bottom: 22px; }
+  .intro { font-size: 1.45rem; font-weight: 500; margin-bottom: 26px; }
+  .btn { background: #c5a86f; color: #121417; border: none; border-radius: 10px; padding: 13px 32px; font-size: 1rem; font-weight: 700; cursor: pointer; width: 100%; transition: .15s; }
+  .btn:hover { opacity: .92; }
+  .btn:active { transform: scale(.98); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-out { background: transparent; color: #9aa2b1; border: 1px solid #2f3540; margin-top: 14px; font-size: .9rem; padding: 10px; }
+  .wrap { position: relative; width: 290px; height: 290px; margin: 0 auto 24px; }
+  .ptr { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); border-left: 12px solid transparent; border-right: 12px solid transparent; border-top: 22px solid #d6be8a; z-index: 5; }
+  canvas { width: 100%; height: 100%; border-radius: 50%; border: 3px solid #2e3440; }
+  .env { margin-top: 20px; background: #22262e; border: 1px dashed #c5a86f; border-radius: 14px; padding: 24px 16px; cursor: pointer; transition: .2s; }
+  .env:hover { background: #272c36; transform: translateY(-2px); }
+  .closed { font-size: 1.05rem; font-weight: 600; color: #d6be8a; }
+  .choice { font-size: 1.5rem; font-weight: 700; color: #eceef2; margin-bottom: 8px; }
+  .msg { font-size: 1.2rem; font-weight: 600; color: #d6be8a; }
+</style>
+</head>
+<body>
+  <div id="intro" class="card">
+    <p class="intro">Boa sorte</p>
+    <button id="openBtn" class="btn">Abrir</button>
+  </div>
+  <div id="app" class="card hidden">
+    <h1>Gire a Roleta</h1>
+    <div class="wrap"><div class="ptr"></div><canvas id="wheel" width="320" height="320"></canvas></div>
+    <button id="spinBtn" class="btn">Girar</button>
+    <div id="box" class="env hidden">
+      <div id="closed" class="closed">Toque para abrir</div>
+      <div id="opened" class="hidden"><div id="picked" class="choice"></div><div class="msg">Parabéns!</div></div>
+    </div>
+    <button id="resetBtn" class="btn btn-out hidden">Girar novamente</button>
+  </div>
+<script>
+  const opts = ["MOTEL", "JANTAR", "PARQUE", "ROLÊ", "AVENTURA NOTURNA"];
+  const cols = ["#232730", "#1c2027", "#282d37", "#1f232b", "#2c313c"];
+  const cvs = document.getElementById("wheel"), ctx = cvs.getContext("2d"), arc = 2 * Math.PI / opts.length;
+  let ang = 0, spinLock = false, win = "";
+  const $ = id => document.getElementById(id);
+
+  function draw() {
+    const c = cvs.width / 2, r = c - 4;
+    ctx.clearRect(0, 0, cvs.width, cvs.height);
+    opts.forEach((txt, i) => {
+      const a = ang + i * arc;
+      ctx.beginPath(); ctx.moveTo(c, c); ctx.arc(c, c, r, a, a + arc);
+      ctx.fillStyle = cols[i % cols.length]; ctx.fill();
+      ctx.strokeStyle = "#343a46"; ctx.lineWidth = 2; ctx.stroke();
+      ctx.save(); ctx.translate(c, c); ctx.rotate(a + arc / 2);
+      ctx.textAlign = "right"; ctx.fillStyle = "#e2e6ed"; ctx.font = "bold 12px system-ui, sans-serif";
+      ctx.fillText(txt, r - 14, 4); ctx.restore();
+    });
+  }
+
+  $("openBtn").onclick = () => { $("intro").classList.add("hidden"); $("app").classList.remove("hidden"); draw(); };
+  $("spinBtn").onclick = () => {
+    if (spinLock) return;
+    spinLock = true; $("spinBtn").disabled = true; $("box").classList.add("hidden"); $("resetBtn").classList.add("hidden");
+    const extra = (5 + Math.random() * 4) * 2 * Math.PI, start = ang, t0 = performance.now();
+    function step(now) {
+      const p = Math.min((now - t0) / 3800, 1);
+      ang = start + extra * (1 - Math.pow(1 - p, 4));
+      draw();
+      if (p < 1) return requestAnimationFrame(step);
+      spinLock = false;
+      let norm = ((ang % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+      let rel = ((1.5 * Math.PI - norm) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+      win = opts[Math.floor(rel / arc) % opts.length];
+      $("closed").classList.remove("hidden"); $("opened").classList.add("hidden"); $("box").classList.remove("hidden");
+    }
+    requestAnimationFrame(step);
+  };
+  $("box").onclick = () => { if (!win) return; $("closed").classList.add("hidden"); $("picked").textContent = win; $("opened").classList.remove("hidden"); $("resetBtn").classList.remove("hidden"); };
+  $("resetBtn").onclick = () => { $("spinBtn").disabled = false; $("box").classList.add("hidden"); $("resetBtn").classList.add("hidden"); };
+</script>
+</body>
+</html>
